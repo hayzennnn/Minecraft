@@ -32,14 +32,20 @@ jobs:
           unzip -q gestion-et-administration-e-commerce.zip -d _unpack
           cd _unpack
 
+          node -e '
+          const fs=require("fs");
+          const p="next.config.mjs";
+          let s=fs.readFileSync(p,"utf8");
+          if(!s.includes("output:")) s=s.replace("const nextConfig = {","const nextConfig = {\n  output: \"export\",\n  basePath: \"/Minecraft\",\n  assetPrefix: \"/Minecraft/\",");
+          fs.writeFileSync(p,s);
+          '
+
           corepack enable
           pnpm install --frozen-lockfile
           pnpm build
 
           if [ ! -d out ]; then
-            echo "Build completed but no 'out' directory was generated."
-            echo "next.config.mjs:"
-            cat next.config.mjs || true
+            echo "Static export was not generated."
             exit 1
           fi
 
