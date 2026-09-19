@@ -1,0 +1,56 @@
+name: Publish Minecraft site
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare site
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _site _unpack
+          mkdir -p _unpack _site
+          unzip -q gestion-et-administration-e-commerce.zip -d _unpack
+
+          INDEX=$(find _unpack -type f -iname 'index.html' | head -1 || true)
+          if [ -z "$INDEX" ]; then
+            echo "No index.html found in the archive."
+            find _unpack -maxdepth 3 -type f | head -100
+            exit 1
+          fi
+
+          ROOT=$(dirname "$INDEX")
+          cp -a "$ROOT"/. _site/
+
+          # GitHub Pages needs a top-level 404 fallback for some SPA routes.
+          if [ -f "_site/index.html" ] && [ ! -f "_site/404.html" ]; then
+            cp "_site/index.html" "_site/404.html"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
