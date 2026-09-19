@@ -23,25 +23,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare site
+      - name: Prepare Next.js project
         shell: bash
         run: |
           set -euo pipefail
           rm -rf _site _unpack
-          mkdir -p _unpack _site
+          mkdir -p _unpack
           unzip -q gestion-et-administration-e-commerce.zip -d _unpack
+          cd _unpack
 
-          INDEX=$(find _unpack -type f -iname 'index.html' | head -1 || true)
-          if [ -z "$INDEX" ]; then
-            echo "No index.html found in the archive."
-            find _unpack -maxdepth 3 -type f | head -100
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm build
+
+          if [ ! -d out ]; then
+            echo "Build completed but no 'out' directory was generated."
+            echo "next.config.mjs:"
+            cat next.config.mjs || true
             exit 1
           fi
 
-          ROOT=$(dirname "$INDEX")
-          cp -a "$ROOT"/. _site/
+          cd ..
+          mv _unpack/out _site
 
-          # GitHub Pages needs a top-level 404 fallback for some SPA routes.
           if [ -f "_site/index.html" ] && [ ! -f "_site/404.html" ]; then
             cp "_site/index.html" "_site/404.html"
           fi
